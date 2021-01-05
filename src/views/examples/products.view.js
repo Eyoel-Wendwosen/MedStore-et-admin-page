@@ -1,0 +1,520 @@
+/*!
+
+=========================================================
+* Argon Dashboard React - v1.1.0
+=========================================================
+
+* Product Page: https://www.creative-tim.com/product/argon-dashboard-react
+* Copyright 2019 Creative Tim (https://www.creative-tim.com)
+* Licensed under MIT (https://github.com/creativetimofficial/argon-dashboard-react/blob/master/LICENSE.md)
+
+* Coded by Creative Tim
+
+=========================================================
+
+* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+*/
+import React, { Component } from "react";
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  FormGroup,
+  Input,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  Row
+} from "reactstrap";
+import { DataGrid } from '@material-ui/data-grid';
+import axios from 'axios';
+import SerializeForm from 'form-serialize';
+
+import Header from "components/Headers/Header.js";
+
+class Products extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      selectedProduct: null,
+      products: [],
+      categories: [],
+      modal: false,
+      isAdd: true,
+      searchQuery: '',
+      newProductImgURL: [],
+      newProductPhotoFiles: null
+    };
+    this.handelSearchChange = this.handelSearchChange.bind(this);
+    this.toggleModal = this.toggleModal.bind(this);
+    this.handelPhotoAdd = this.handelPhotoAdd.bind(this);
+    this.handelPhotoUpload = this.handelPhotoUpload.bind(this);
+    this.handelSubmit = this.handelSubmit.bind(this);
+    this.handelAddButton = this.handelAddButton.bind(this);
+  }
+
+
+  componentDidMount() {
+    axios.get(`http://localhost:8080/api/v1/product`)
+      .then(res => {
+        res.data.data.map(product => (
+          product["id"] = product["_id"]
+        ));
+        this.setState({
+          products: res.data.data
+        });
+      });
+
+    axios.get(`http://localhost:8080/api/v1/category`)
+      .then(res => {
+        this.setState({
+          categories: res.data.data
+        });
+      });
+  }
+
+  toggleModal() {
+    this.setState((prevState) => ({
+      modal: !prevState.modal
+    }));
+  }
+
+  handelAddButton() {
+    this.setState({
+      isAdd: true,
+      selectedProduct: null
+    });
+    this.toggleModal();
+  }
+
+  handelRowClick(row) {
+    this.setState({
+      selectedProduct: row.data
+    });
+  }
+
+  handelDelete(e) {
+    e.preventDefault();
+    axios.delete(`http://localhost:8080/api/v1/product/${this.state.selectedProduct._id}`)
+      .then(
+        res => {
+          res.data.data["id"] = res.data.data["_id"];
+          let products = this.state.products;
+          products.splice(
+            products.indexOf(
+              products.find(product => product.id === res.data.data["id"])
+            ), 1);
+          this.setState({ products });
+        });
+  }
+
+  handelSearchChange(e) {
+    e.preventDefault();
+    this.setState({
+      searchQuery: e.target.value
+    });
+  }
+
+  handelSubmit(event, eventType) {
+    event.preventDefault();
+    const formValues = SerializeForm(event.target, { hash: true });
+    const newData = {
+      name: formValues["productName"],
+      category: formValues["productCategory"],
+      tags: formValues["productTags"] ? formValues["productTags"].split(',') : [],
+      condition: formValues["productCondition"],
+      brand: formValues["brandName"],
+      model: formValues["brandModel"],
+      country: formValues["brandCountry"],
+      year: formValues["productYear"],
+      description: formValues["productDescription"],
+      characteristics: formValues["productCharacteristics"] ? formValues["productCharacteristics"].split(';').map(char => (char.split(':'))) : [],
+      photo_urls: this.state.newProductImgURL.length !== 0 ? this.state.newProductImgURL : []
+    };
+    if (eventType === "add") {
+      axios.post(`http://localhost:8080/api/v1/product`, { product: newData })
+        .then(res => {
+          res.data.data["id"] = res.data.data["_id"];
+          this.setState((prevState) => ({
+            products: prevState.products.concat([res.data.data])
+          }));
+        });
+    } else {
+      axios.put(`http://localhost:8080/api/v1/product/${this.state.selectedProduct._id}`, { product: newData })
+        .then(
+          res => {
+            res.data.data["id"] = res.data.data["_id"];
+            this.setState((prevState) => ({
+              products: prevState.products.map(product => product.id === res.data.data.id ? res.data.data : product)
+            }));
+          }
+        );
+    }
+  }
+
+  handelPhotoAdd(e) {
+    let photos = e.target.files;
+    this.setState({
+      newProductPhotoFiles: photos
+    });
+  }
+
+  handelPhotoUpload(e) {
+    e.preventDefault();
+
+    let formData = new FormData();
+    for (const key of Object.keys(this.state.newProductPhotoFiles)) {
+      formData.append('products', this.state.newProductPhotoFiles[key]);
+    }
+    // formData.append("type", "productPhoto");
+
+    axios.post(`http://localhost:8080/api/v1/uploads`, formData, {})
+      .then(res => {
+        this.setState({
+          newProductImgURL: res.data.data
+        });
+      });
+  }
+
+  render() {
+    const columns = [
+      { field: 'name', headerName: 'Product Name', width: 250, },
+      { field: 'brand', headerName: 'Brand', width: 200 },
+      { field: 'model', headerName: 'Model', },
+      { field: 'year', headerName: 'Year', type: 'date' },
+      {
+        field: 'category', headerName: 'Category', width: 250,
+        valueFormatter: ({ value }) => { return value.join(", "); }
+      },
+      { field: 'condition', headerName: 'Condition', valueFormatter: ({ value }) => { return value === "brand_new" ? "New" : 'Used'; } },
+      { field: 'rating', headerName: 'Rating', },
+      { field: 'tags', headerName: 'Tags', width: 200 },
+      {
+        field: '', headerName: 'Action',
+        renderCell: (params) => (
+          <strong>
+            <Button
+              variant="contained"
+              color="info"
+              size="sm"
+              style={{ marginLeft: 16 }}
+              onClick={(param) => { this.setState({ isAdd: false, selectedProduct: params.data }); this.toggleModal(); }}
+            >
+              <span className='material-icons'>create</span>
+            </Button>
+          </strong>
+        )
+      },
+    ];
+
+    const { products, searchQuery } = this.state;
+
+    const showingRows = searchQuery === '' ?
+      products :
+      products.filter((product) => (
+        product.name.toLowerCase().includes(searchQuery.toLocaleLowerCase()) ||
+        product.brand.toLowerCase().includes(searchQuery.toLocaleLowerCase()) ||
+        // product.category.toLowerCase().includes(searchQuery.toLocaleLowerCase()) ||
+        product.model.toLowerCase().includes(searchQuery.toLocaleLowerCase()) ||
+        product.condition.toLowerCase().includes(searchQuery.toLocaleLowerCase())
+      ));
+
+    return (
+      <>
+        <Header />
+
+        <Row className="my-1 justify-content-end">
+          <Input placeholder="Search for proudct with name, brand, category, model, condition" onChange={this.handelSearchChange} className="w-75 mr-5"></Input>
+          <Button onClick={this.handelAddButton} className="btn-success mr-4">Add</Button>
+          {/* <Button onClick={() => { this.toggleModal("edit"); }} className="btn-info mr-4">Edit</Button> */}
+        </Row>
+        <Card className="mx-2">
+          <div style={{ height: "75vh", width: '100%' }}>
+            <DataGrid
+              // onRowSelected={(row) => this.handelRowClick(row)}
+              rows={showingRows}
+              columns={columns}
+              pageSize={100} />
+          </div>
+        </Card>
+
+        <Modal size="lg" isOpen={this.state.modal} toggle={this.toggleModal} >
+          <Form
+            onSubmit={(e) => { this.state.isAdd ? this.handelSubmit(e, "add") : this.handelSubmit(e, "edit"); this.toggleModal(); }}
+            encType='multipart/form-data'
+          >
+            <ModalHeader toggle={this.toggleModal}>{this.state.isAdd ? "Add " : "Edit "} Product</ModalHeader>
+            <ModalBody>
+              <Row>
+                <Col className="order-xl-1" xl="">
+                  <h6 className="heading-small text-muted mb-4">
+                    Product information
+                    </h6>
+                  <div className="pl-lg-4">
+                    <Row>
+                      <Col lg="6">
+                        <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="productName"
+                          >
+                            Name
+                            </label>
+                          <Input
+                            required
+                            className="form-control-alternative"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.name : ""}
+                            name="productName"
+                            placeholder="MRI Scanner"
+                            type="text"
+                          />
+                        </FormGroup>
+                        <Row>
+                          <Col lg="6">
+                            <FormGroup>
+                              <label
+                                className="form-control-label"
+                                htmlFor="productQunatity"
+                              >
+                                Quantity
+                            </label>
+                              <Input
+                                required
+                                className="form-control-alternative"
+                                defaultValue={this.state.selectedProduct ? this.state.selectedProduct.quantity : 1}
+                                name="productQunatity"
+                                placeholder="100"
+                                type="Number"
+                              />
+                            </FormGroup>
+                          </Col>
+                          <Col lg="6">
+                            <FormGroup>
+                              <label
+                                className="form-control-label"
+                                htmlFor="productCondition"
+                              >
+                                Condition
+                            </label>
+                              <Input
+                                className="form-control-alternative"
+                                defaultValue={this.state.selectedProduct ? this.state.selectedProduct.condition : ""}
+                                name="productCondition"
+                                placeholder="New"
+                                type="select"
+                              >
+                                <option value="brand_new">New</option>
+                                <option value="used">Used</option>
+                              </Input>
+                            </FormGroup>
+                          </Col>
+                        </Row>
+                      </Col>
+                      <Col lg="6">
+                        <FormGroup height="100">
+                          <label
+                            className="form-control-label"
+                            htmlFor="productCategory"
+                          >
+                            Category
+                            </label>
+                          <Input
+                            required
+                            className="form-control-alternative"
+                            name="productCategory"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.category : ""}
+                            placeholder="MRI"
+                            type="select"
+                            multiple
+                          >
+                            {this.state.categories.length !== 0 ? this.state.categories.map(category => (<option>{category.name}</option>)) : ''}
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col lg="12">
+                        <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="productTags"
+                          >
+                            Tags
+                            </label>
+                          <Input
+                            className="form-control-alternative"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.tags : ""}
+                            name="productTags"
+                            placeholder="eye, oct, "
+                            type="text"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col lg="6">
+
+                      </Col>
+
+                    </Row>
+                  </div>
+                  <hr className="my-3" />
+                  {/* Address */}
+                  <h6 className="heading-small text-muted mb-4">
+                    Brand
+                    </h6>
+                  <div className="pl-lg-4">
+                    <Row>
+                      <Col lg="6">
+                        <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="brandName"
+                          >
+                            Name
+                            </label>
+                          <Input
+                            className="form-control-alternative"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.brand : ""}
+                            name="brandName"
+                            placeholder="Canon"
+                            type="text"
+                          >
+                            <option>1</option>
+                            <option>1</option>
+                            <option>1</option>
+                            <option>1f</option>
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                      <Col lg="6">
+                        <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="brandModel"
+                          >
+                            Model
+                            </label>
+                          <Input
+                            required
+                            className="form-control-alternative"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.model : ""}
+                            name="brandModel"
+                            placeholder="BJSKS123"
+                            type="text"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col lg="6">
+                        <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="brandCountry"
+                          >
+                            Country
+                            </label>
+                          <Input
+                            className="form-control-alternative"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.country : ""}
+                            name="brandCountry"
+                            placeholder="Country"
+                            type="text"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col lg="6">
+                        <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="brandModelYear"
+                          >
+                            Year
+                            </label>
+                          <Input
+                            className="form-control-alternative"
+                            name="brandModelYear"
+                            placeholder="2020"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.year : "2020"}
+                            type="number"
+                          />
+                        </FormGroup>
+                      </Col>
+                    </Row>
+                  </div>
+                  <hr className="my-3" />
+                  {/* Description */}
+                  <h6 className="heading-small text-muted mb-4">Product Specification</h6>
+                  <div className="pl-lg-4">
+                    <FormGroup>
+                      <label
+                        className="form-control-label"
+                        htmlFor="productDescription">
+                        Description
+                      </label>
+                      <Input
+                        className="form-control-alternative"
+                        placeholder="A few words about the product ..."
+                        rows="3"
+                        name="productDescription"
+                        defaultValue={this.state.selectedProduct ? this.state.selectedProduct.description : ""}
+                        type="textarea"
+                      />
+                    </FormGroup>
+                  </div>
+                  <div className="pl-lg-4">
+                    <FormGroup>
+                      <label
+                        className="form-control-label"
+                        htmlFor="productCharacteristics">
+                        Characteristics
+                      </label>
+                      <Input
+                        className="form-control-alternative"
+                        placeholder="Battery Life: 5hrs; Battery Capacity: 2300mAh"
+                        rows="3"
+                        name="productCharacteristics"
+                        type="textarea"
+                        defaultValue={this.state.selectedProduct ? this.state.selectedProduct.characteristics : ""}
+                      />
+                    </FormGroup>
+                  </div>
+                  <div className="pl-lg-4">
+                    <FormGroup>
+                      <label
+                        className="form-control-label"
+                        htmlFor="productPhotos">
+                        Photos
+                      </label>
+                      <Input
+                        onChange={(e) => this.handelPhotoAdd(e)}
+                        className="form-control-alternative"
+                        name="productPhotos"
+                        type="file"
+                        accept="image/x-png,image/gif,image/jpeg"
+                        multiple
+                        formEncType='multipart/form-data'
+                      >
+                      </Input>
+                      <Button size="md" className="mt-2" color="info" onClick={(e) => this.handelPhotoUpload(e)}>Upload</Button>
+                    </FormGroup>
+                  </div>
+                  {/* </CardBody>
+                </Card> */}
+                </Col>
+              </Row>
+            </ModalBody>
+            <ModalFooter>
+              <Button color="success" type="submit">{this.state.isAdd ? "Add Product" : "Save"}</Button>
+              {this.state.isAdd ? "" : <Button onClick={e => { this.handelDelete(e); this.toggleModal(); }} color='warning'>Delete</Button>}
+              <Button color="secondary" onClick={this.toggleModal}>Cancel</Button>
+            </ModalFooter>
+          </Form>
+        </Modal>
+
+      </>
+    );
+  }
+}
+
+export default Products;
