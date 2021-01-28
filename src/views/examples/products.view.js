@@ -34,16 +34,18 @@ import axios from 'axios';
 import SerializeForm from 'form-serialize';
 
 import Header from "components/Headers/Header.js";
+import { RestaurantMenuOutlined } from "@material-ui/icons";
 
 class Products extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      modal: false,
+      isAdd: true,
       selectedProduct: null,
       products: [],
       categories: [],
-      modal: false,
-      isAdd: true,
+      subCategories:[],
       searchQuery: '',
       newProductImgURL: [],
       newProductPhotoFiles: null
@@ -57,23 +59,20 @@ class Products extends Component {
   }
 
 
-  componentDidMount() {
-    axios.get(`http://localhost:8080/api/v1/product`)
-      .then(res => {
-        res.data.data.map(product => (
-          product["id"] = product["_id"]
-        ));
-        this.setState({
-          products: res.data.data
-        });
-      });
-
-    axios.get(`http://localhost:8080/api/v1/category`)
-      .then(res => {
-        this.setState({
-          categories: res.data.data
-        });
-      });
+  async componentDidMount(){
+    let products = (await axios.get(`http://localhost:8080/api/v1/product`)).data.data;
+    products.forEach(product => {
+      product["id"] = product["_id"]
+      product.categoryName = product.category.name
+      product.subCategoryName = product.subCategory.name
+    });
+    const categories = (await axios.get(`http://localhost:8080/api/v1/category?fields=name`)).data.data;
+    const subCategories = (await axios.get(`http://localhost:8080/api/v1/subCategory?fields=name`)).data.data;
+    this.setState({
+      products,
+      categories,
+      subCategories
+    })
   }
 
   toggleModal() {
@@ -99,14 +98,10 @@ class Products extends Component {
   handelDelete(e) {
     e.preventDefault();
     axios.delete(`http://localhost:8080/api/v1/product/${this.state.selectedProduct._id}`)
-      .then(
-        res => {
-          res.data.data["id"] = res.data.data["_id"];
+      .then(()=> {
+          const deletedProductId = this.state.selectedProduct._id
           let products = this.state.products;
-          products.splice(
-            products.indexOf(
-              products.find(product => product.id === res.data.data["id"])
-            ), 1);
+          products = products.filter(product=>product.id != deletedProductId)
           this.setState({ products });
         });
   }
@@ -123,19 +118,21 @@ class Products extends Component {
     const formValues = SerializeForm(event.target, { hash: true });
     const newData = {
       name: formValues["productName"],
-      category: formValues["productCategory"],
+      category: this.state.categories.filter(category=>category.name == formValues["productCategory"])[0]._id,
+      subCategory: this.state.subCategories.filter(subCategory=>subCategory.name == formValues["productSubCategory"])[0]._id,
       tags: formValues["productTags"] ? formValues["productTags"].split(',') : [],
       condition: formValues["productCondition"],
       brand: formValues["brandName"],
+      company: formValues['companyName'],
       model: formValues["brandModel"],
       country: formValues["brandCountry"],
       year: formValues["productYear"],
       description: formValues["productDescription"],
       characteristics: formValues["productCharacteristics"] ? formValues["productCharacteristics"].split(';').map(char => (char.split(':'))) : [],
-      photo_urls: this.state.newProductImgURL.length !== 0 ? this.state.newProductImgURL : []
+      photo_urls: this.state.newProductImgURL.length !== 0 ? this.state.newProductImgURL : [],
     };
     if (eventType === "add") {
-      axios.post(`http://localhost:8080/api/v1/product`, { product: newData })
+        axios.post(`http://localhost:8080/api/v1/product`, newData )
         .then(res => {
           res.data.data["id"] = res.data.data["_id"];
           this.setState((prevState) => ({
@@ -143,21 +140,20 @@ class Products extends Component {
           }));
         });
     } else {
-      axios.put(`http://localhost:8080/api/v1/product/${this.state.selectedProduct._id}`, { product: newData })
-        .then(
-          res => {
+      axios.patch(`http://localhost:8080/api/v1/product/${this.state.selectedProduct._id}`, newData )
+        .then(res => {
             res.data.data["id"] = res.data.data["_id"];
             this.setState((prevState) => ({
               products: prevState.products.map(product => product.id === res.data.data.id ? res.data.data : product)
             }));
           }
-        );
-    }
+        )}
   }
 
   handelPhotoAdd(e) {
     let photos = e.target.files;
     this.setState({
+      // isAdd: true,
       newProductPhotoFiles: photos
     });
   }
@@ -180,20 +176,21 @@ class Products extends Component {
   }
 
   render() {
+    console.log("renderingg ....")
     const columns = [
-      { field: 'name', headerName: 'Product Name', width: 250, },
-      { field: 'brand', headerName: 'Brand', width: 200 },
-      { field: 'model', headerName: 'Model', },
+      { field: 'name', headerName: 'Product Name', width: 200, },
+      { field: 'brand', headerName: 'Brand', width: 100 },
+      { field: 'company', headerName: 'Company', width: 100 },
+      { field: 'model', headerName: 'Model',width: 80 },
       { field: 'year', headerName: 'Year', type: 'date' },
-      {
-        field: 'category', headerName: 'Category', width: 250,
-        valueFormatter: ({ value }) => { return value.join(", "); }
-      },
+      { field: 'categoryName', headerName: 'Category', width: 200},
+      { field: 'subCategoryName', headerName: 'SubCategory', width: 200},
+        // valueFormatter: ({ value }) => { return value.join(", "); }},
       { field: 'condition', headerName: 'Condition', valueFormatter: ({ value }) => { return value === "brand_new" ? "New" : 'Used'; } },
       { field: 'rating', headerName: 'Rating', },
       { field: 'tags', headerName: 'Tags', width: 200 },
       {
-        field: '', headerName: 'Action',
+        field: 'action', headerName: 'Action',
         renderCell: (params) => (
           <strong>
             <Button
@@ -286,7 +283,7 @@ class Products extends Component {
                                 className="form-control-alternative"
                                 defaultValue={this.state.selectedProduct ? this.state.selectedProduct.quantity : 1}
                                 name="productQunatity"
-                                placeholder="100"
+                                placeholder="1"
                                 type="Number"
                               />
                             </FormGroup>
@@ -325,18 +322,35 @@ class Products extends Component {
                             required
                             className="form-control-alternative"
                             name="productCategory"
-                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.category : ""}
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.categoryName : ""}
                             placeholder="MRI"
                             type="select"
-                            multiple
                           >
                             {this.state.categories.length !== 0 ? this.state.categories.map(category => (<option>{category.name}</option>)) : ''}
+                          </Input>
+                        </FormGroup>
+                        <FormGroup height="100">
+                          <label
+                            className="form-control-label"
+                            htmlFor="productSubCategory"
+                          >
+                            SubCategory
+                            </label>
+                          <Input
+                            required
+                            className="form-control-alternative"
+                            name="productSubCategory"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.subCategoryName : ""}
+                            placeholder="MRI"
+                            type="select"
+                          >
+                            {this.state.subCategories.length !== 0 ? this.state.subCategories.map(subCategory => (<option>{subCategory.name}</option>)) : ''}
                           </Input>
                         </FormGroup>
                       </Col>
                     </Row>
                     <Row>
-                      <Col lg="12">
+                      <Col lg="6">
                         <FormGroup>
                           <label
                             className="form-control-label"
@@ -348,13 +362,27 @@ class Products extends Component {
                             className="form-control-alternative"
                             defaultValue={this.state.selectedProduct ? this.state.selectedProduct.tags : ""}
                             name="productTags"
-                            placeholder="eye, oct, "
+                            placeholder="eye,heart,... "
                             type="text"
                           />
                         </FormGroup>
                       </Col>
                       <Col lg="6">
-
+                      <FormGroup>
+                          <label
+                            className="form-control-label"
+                            htmlFor="companyName"
+                          >
+                            Company
+                            </label>
+                          <Input  
+                            className="form-control-alternative"
+                            defaultValue={this.state.selectedProduct ? this.state.selectedProduct.company : ""}
+                            name="companyName"
+                            placeholder=""
+                            type="text"
+                          />
+                        </FormGroup>
                       </Col>
 
                     </Row>
@@ -380,12 +408,7 @@ class Products extends Component {
                             name="brandName"
                             placeholder="Canon"
                             type="text"
-                          >
-                            <option>1</option>
-                            <option>1</option>
-                            <option>1</option>
-                            <option>1f</option>
-                          </Input>
+                          />
                         </FormGroup>
                       </Col>
                       <Col lg="6">
@@ -397,7 +420,6 @@ class Products extends Component {
                             Model
                             </label>
                           <Input
-                            required
                             className="form-control-alternative"
                             defaultValue={this.state.selectedProduct ? this.state.selectedProduct.model : ""}
                             name="brandModel"

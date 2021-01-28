@@ -37,69 +37,87 @@ import SerializeForm from 'form-serialize';
 // core components
 import Header from "components/Headers/Header.js";
 
-class Category extends React.Component {
+class SubCategory extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {
       isAdd: true,
       isModalOpen: false,
+      selectedSubCategory: null,
+      subCategories: [],
       categories: [],
-      selectedCategory: null,
     };
     this.toggleModal = this.toggleModal.bind(this);
     this.handelAddButton = this.handelAddButton.bind(this);
     this.handelSubmit = this.handelSubmit.bind(this);
   }
 
-  componentDidMount() {
-    axios.get(`http://localhost:8080/api/v1/category`)
-      .then(res => { 
-        res.data.data.map(category => (
-          category["id"] = category["_id"]
-        ));
-        this.setState({
-          categories: res.data.data
-        });
-      });
+  async componentDidMount(){
+    let subCategories = await axios.get(`http://localhost:8080/api/v1/subCategory`)
+    subCategories = subCategories.data.data
+    subCategories.forEach(subCategory=>{
+      subCategory["id"] = subCategory["_id"]
+      delete subCategory["_id"]
+    })
+    let categoryPromises = subCategories.map(subCategory=>{
+      return axios.get(`http://localhost:8080/api/v1/category/${subCategory.category}?fields=name`)
+    })
+    let category = await Promise.all(categoryPromises)
+    category = category.map(c=>c.data.data.name)
+    let count = 0;
+    subCategories.forEach(subCategory=>{
+      subCategory.category = category[count]
+      count++
+    })
+    this.setState({
+      subCategories
+    })
+    let categories = (await axios.get(`http://localhost:8080/api/v1/category?fields=name`)).data.data
+    this.setState({
+      categories
+    })
   }
 
   handelDelete(e) {
     e.preventDefault();
-    axios.delete(`http://localhost:8080/api/v1/category/${this.state.selectedCategory._id}`)
+    axios.delete(`http://localhost:8080/api/v1/subCategory/${this.state.selectedSubCategory.id}`)
       .then(() => {
-        let newCategories = this.state.categories.filter(category=>category.id!=this.state.selectedCategory._id)
+        let newSubCategories = this.state.subCategories.filter(subCategory=>subCategory.id!=this.state.selectedSubCategory.id)
         this.setState({
-          categories:newCategories
-        });
-      })
+          subCategories:newSubCategories
+        })
+      })   
   }
 
   handelSubmit(e, eventType) {
     e.preventDefault();
     const formValues = SerializeForm(e.target, { hash: true });
+    let category = this.state.categories.filter(category=>category.name == formValues['CategoryOfSubCategory'])[0]
+    let categoryID = category._id
     const newData = {
-      name: formValues['categoryName'],
-      description: formValues['categoryDescription'],
-      // type: formValues['categoryType'],
-      // subCategories: formValues['categorySubCategories'] ? formValues['categorySubCategories'].map(categoryName => this.state.categories.find(category => category.name === categoryName)) : []
+      name: formValues['subCategoryName'],
+      category: categoryID,
+      description: formValues['subCategoryDescription'],
     };
     if (eventType === "add") {
-      console.log(newData)
-      axios.post(`http://localhost:8080/api/v1/category`, newData)
+      axios.post(`http://localhost:8080/api/v1/subCategory`, newData)
         .then(res => {
           res.data.data["id"] = res.data.data["_id"];
+          res.data.data.category = category.name
           this.setState((prevState) => ({
-            categories: prevState.categories.concat([res.data.data])
+            subCategories: prevState.subCategories.concat([res.data.data])
           }));
         });
     } else {
-      axios.patch(`http://localhost:8080/api/v1/category/${this.state.selectedCategory._id}`, newData)
+      console.log(this.state.selectedSubCategory)
+      axios.patch(`http://localhost:8080/api/v1/subCategory/${this.state.selectedSubCategory.id}`, newData)
         .then(
           res => {
             res.data.data["id"] = res.data.data["_id"];
+            res.data.data.category = category.name
             this.setState((prevState) => ({
-              categories: prevState.categories.map(category => category.id === res.data.data.id ? res.data.data : category)
+              subCategories: prevState.subCategories.map(subCategory => subCategory.id === res.data.data.id ? res.data.data : subCategory)
             }));
           });
     }
@@ -114,16 +132,16 @@ class Category extends React.Component {
   handelAddButton() {
     this.setState({
       isAdd: true,
-      selectedCategory: null
+      selectedSubCategory: null
     });
     this.toggleModal();
   }
 
   render() {
     const columns = [
-      { field: 'name', headerName: 'Category Name', width: 400 },
-      // { field: 'type', headerName: 'Category Type', width: 200, valueFormatter: ({ value }) => { return value === "main category" ? "Main Category" : "Sub Category"; } },
-      { field: 'description', headerName: 'Description', width: 450 },
+      { field: 'name', headerName: 'SubCategory Name', width: 300 },
+      { field: 'category', headerName: 'Category', width: 200, },
+      { field: 'description', headerName: 'Description', width: 400 },
       {
         field: 'action', headerName: 'Action', widht: 300,
         renderCell: (params) => (
@@ -133,7 +151,7 @@ class Category extends React.Component {
               color="primary"
               size="sm"
               style={{ marginLeft: 16 }}
-              onClick={(param) => { this.setState({ isAdd: false, selectedCategory: params.data }); this.toggleModal(); }}
+              onClick={(param) => { this.setState({ isAdd: false, selectedSubCategory: params.data }); this.toggleModal(); }}
             >
               <span className='material-icons'>create</span>
             </Button>
@@ -146,7 +164,7 @@ class Category extends React.Component {
         <Header />
         {/* Page content */}
         <Row className="my-1 justify-content-end">
-          <Input placeholder="Search for Category" onChange={this.handelSearchChange} className="w-75 mr-5"></Input>
+          <Input placeholder="Search for SubCategory" onChange={this.handelSearchChange} className="w-75 mr-5"></Input>
           <Button
             onClick={this.handelAddButton}
             className="btn-success mr-4">Add</Button>
@@ -156,7 +174,7 @@ class Category extends React.Component {
           <div style={{ height: "75vh", }}>
             <DataGrid
               // onRowSelected={(row) => this.handelRowClick(row)}
-              rows={this.state.categories}
+              rows={this.state.subCategories}
               columns={columns}
               pageSize={100} />
           </div>
@@ -170,50 +188,78 @@ class Category extends React.Component {
         >
           <Form>
             <ModalHeader>
-              {this.state.selectedCategory ? this.state.selectedCategory.name : "Category"} {' '}Information
+              {this.state.selectedSubCategory ? this.state.selectedSubCategory.name : "Category"} {' '}Information
             </ModalHeader>
             <ModalBody>
-              <h2>Detail Category Information</h2>
+              <h2>
+                Detail SubCategory Information
+                </h2>
               <Row className="pl-4">
                 <Col lg="6">
                   <FormGroup>
                     <label
                       className="form-control-label"
-                      htmlFor="categoryName">
+                      htmlFor="subCategoryName">
                       Name
                     </label>
                     <Input
-                      required
                       className="form-control-alternative"
-                      name="categoryName"
-                      defaultValue={this.state.selectedCategory ? this.state.selectedCategory.name : ""}
+                      name="subCategoryName"
+                      defaultValue={this.state.selectedSubCategory ? this.state.selectedSubCategory.name : ""}
                       placeholder="PRIMARY CARE"
                       type="text"
                     />
                   </FormGroup>
+                  {/* <FormGroup>
+                    <label
+                      className="form-control-label"
+                      htmlFor="subCategoryType">
+                      Type
+                    </label>
+                    <Input
+                      className="form-control-alternative"
+                      name="subCategoryType"
+                      defaultValue={this.state.selectedSubCategory ? this.state.selectedSubCategory.type : ""}
+                      placeholder="PRIMARY CARE"
+                      type="select"
+                    >
+                      <option value="main subCategory">Main Category</option>
+                      <option value="sub subCategory">Sub Category</option>
+                    </Input>
+                  </FormGroup> */}
                 </Col>
                 <Col lg="6">
+                  <FormGroup>
+                    <label
+                      className="form-control-label"
+                      htmlFor="CategoryOfSubCategory">
+                      Categories
+                    </label>
+                    <Input
+                      className="form-control-alternative"
+                      name="CategoryOfSubCategory"
+                      defaultValue={this.state.selectedSubCategory ? this.state.selectedSubCategory.category.name : ""}
+                      type="select"
+                    >
+                      {this.state.categories.length !== 0 ? this.state.categories.map(category => (<option>{category.name}</option>)) : ''}
+                    </Input>
+                  </FormGroup>
                 </Col>
                 <Col lg="12">
                   <FormGroup>
                     <label
                       className="form-control-label"
-                      htmlFor="categoryDescription">
+                      htmlFor="subCategoryDescription">
                       Description
                     </label>
                     <Input
                       className="form-control-alternative"
-                      name="categoryDescription"
-                      defaultValue={this.state.selectedCategory ? this.state.selectedCategory.description : ""}
-                      placeholder="Lorem Epsum"
+                      name="subCategoryDescription"
+                      defaultValue={this.state.selectedSubCategory ? this.state.selectedSubCategory.description : ""}
                       type="textarea"
                     />
                   </FormGroup>
                 </Col>
-              </Row>
-              <Row className="pl-4">
-                
-                  <Col lg="12"></Col>
               </Row>
             </ModalBody>
             <ModalFooter>
@@ -229,4 +275,4 @@ class Category extends React.Component {
   }
 }
 
-export default Category;
+export default SubCategory;
