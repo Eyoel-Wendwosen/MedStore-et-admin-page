@@ -62,9 +62,10 @@ class Products extends Component {
   async componentDidMount(){
     let products = (await axios.get(`http://localhost:8080/api/v1/product`)).data.data;
     products.forEach(product => {
+      // console.log(product.subCategory.name)
       product["id"] = product["_id"]
       product.categoryName = product.category.name
-      product.subCategoryName = product.subCategory.name
+      product.subCategoryName = product.subCategory ? product.subCategory.name : "-"
     });
     const categories = (await axios.get(`http://localhost:8080/api/v1/category?fields=name`)).data.data;
     const subCategories = (await axios.get(`http://localhost:8080/api/v1/subCategory?fields=name`)).data.data;
