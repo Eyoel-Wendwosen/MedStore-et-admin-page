@@ -37,6 +37,7 @@ import axios from 'axios'
 import SerializeForm from 'form-serialize'
 // core components
 import Header from 'components/Headers/Header.js'
+import { SERVER_URL, API_URL } from '../../constants'
 import { Today } from '@material-ui/icons'
 
 class Request extends React.Component {
@@ -52,7 +53,7 @@ class Request extends React.Component {
 	}
 
 	async componentDidMount() {
-		let requests = await axios.get(`http://localhost:8080/api/v1/request`)
+		let requests = await axios.get(`${SERVER_URL}${API_URL}/request`)
 		requests = requests.data.data
 		let newRequests = []
 		requests.forEach(request => {
@@ -72,7 +73,6 @@ class Request extends React.Component {
 			}
 			newRequests.push(obj)
 		})
-		console.log(newRequests)
 		this.setState({
 			requests: newRequests.filter(request => request.processed),
 		})
@@ -80,16 +80,14 @@ class Request extends React.Component {
 
 	handelDelete(e) {
 		e.preventDefault()
-		axios
-			.delete(`http://localhost:8080/api/v1/request/${this.state.selectedRequest.id}`)
-			.then(() => {
-				let newRequest = this.state.requests.filter(
-					request => request.id != this.state.selectedRequest.id
-				)
-				this.setState({
-					requests: newRequest,
-				})
+		axios.delete(`${SERVER_URL}${API_URL}/request/${this.state.selectedRequest.id}`).then(() => {
+			let newRequest = this.state.requests.filter(
+				request => request.id != this.state.selectedRequest.id
+			)
+			this.setState({
+				requests: newRequest,
 			})
+		})
 	}
 
 	toggleModal() {
