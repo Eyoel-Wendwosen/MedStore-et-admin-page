@@ -1,20 +1,3 @@
-/*!
-
-=========================================================
-* Argon Dashboard React - v1.1.0
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/argon-dashboard-react
-* Copyright 2019 Creative Tim (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/argon-dashboard-react/blob/master/LICENSE.md)
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
 import React, { Component } from 'react'
 import {
 	Button,
@@ -65,6 +48,7 @@ class Products extends Component {
 			product['id'] = product['_id']
 			product.categoryName = product.category.name
 			product.subCategoryName = product.subCategory ? product.subCategory.name : '  -  '
+			product.year = /\d{4}/.exec(product.year)[0]
 		})
 		const categories = (await axios.get(`${SERVER_URL}${API_URL}/category?fields=name`)).data.data
 		const subCategories = (await axios.get(`${SERVER_URL}${API_URL}/subCategory`)).data.data
@@ -73,13 +57,6 @@ class Products extends Component {
 			categories,
 			subCategories,
 		})
-
-		// setting selectedCategorySubCatagory state to the first element of category Element
-		// let selectedCategorySubCategory = subCategories.filter(sub => sub.category == categories[0]._id)
-		// selectedCategorySubCategory = selectedCategorySubCategory.map(sub => sub.name)
-		// this.setState({
-		// 	selectedCategorySubCategory,
-		// })
 	}
 
 	toggleModal() {
@@ -119,9 +96,8 @@ class Products extends Component {
 		})
 	}
 
-	handelSubmit(event, eventType) {
+	async handelSubmit(event, eventType) {
 		event.preventDefault()
-
 		const formValues = SerializeForm(event.target, { hash: true })
 		const newData = {
 			name: formValues['productName'],
@@ -149,23 +125,30 @@ class Products extends Component {
 		}
 
 		if (eventType === 'add') {
-			axios.post(`${SERVER_URL}${API_URL}/product`, newData).then(res => {
-				res.data.data['id'] = res.data.data['_id']
-				this.setState(prevState => ({
-					products: prevState.products.concat([res.data.data]),
-				}))
-			})
+			let product = (await axios.post(`${SERVER_URL}${API_URL}/product`, newData)).data.data
+			product['id'] = product['_id']
+			product.categoryName = product.category.name
+			product.subCategoryName = product.subCategory ? product.subCategory.name : '  -  '
+			product.year = /\d{4}/.exec(product.year)[0]
+
+			this.setState(prevState => ({
+				products: prevState.products.concat([product]),
+			}))
 		} else {
-			axios
-				.patch(`${SERVER_URL}${API_URL}/product/${this.state.selectedProduct._id}`, newData)
-				.then(res => {
-					res.data.data['id'] = res.data.data['_id']
-					this.setState(prevState => ({
-						products: prevState.products.map(product =>
-							product.id == res.data.data.id ? res.data.data : product
-						),
-					}))
-				})
+			let product = (
+				await axios.patch(
+					`${SERVER_URL}${API_URL}/product/${this.state.selectedProduct._id}`,
+					newData
+				)
+			).data.data
+			product['id'] = product['_id']
+			product.categoryName = product.category.name
+			product.subCategoryName = product.subCategory ? product.subCategory.name : '  -  '
+			product.year = /\d{4}/.exec(product.year)[0]
+
+			this.setState(prevState => ({
+				products: prevState.products.map(p => (p.id == product.id ? product : p)),
+			}))
 		}
 	}
 
@@ -201,10 +184,11 @@ class Products extends Component {
 			category => category.name == selectedCategoryName
 		)[0]._id
 
+		// get all subCategories with a category property of categoryId
 		let requeiredSubCategory = this.state.subCategories.filter(
 			subCategory => subCategory.category == categoryId
 		)
-
+		// getting only the names
 		requeiredSubCategory = requeiredSubCategory.map(el => el.name)
 		this.setState({ selectedCategorySubCategory: requeiredSubCategory })
 	}
@@ -212,12 +196,12 @@ class Products extends Component {
 	render() {
 		const columns = [
 			{ field: 'name', headerName: 'Product Name', width: 200 },
+			{ field: 'categoryName', headerName: 'Category', width: 200 },
+			{ field: 'subCategoryName', headerName: 'SubCategory', width: 200 },
 			{ field: 'brand', headerName: 'Brand', width: 100 },
 			{ field: 'company', headerName: 'Company', width: 100 },
 			{ field: 'model', headerName: 'Model', width: 80 },
-			{ field: 'year', headerName: 'Year', type: 'date' },
-			{ field: 'categoryName', headerName: 'Category', width: 200 },
-			{ field: 'subCategoryName', headerName: 'SubCategory', width: 200 },
+			{ field: 'year', headerName: 'Year', type: 'date', width: 100 },
 			{
 				field: 'condition',
 				headerName: 'Condition',
@@ -238,8 +222,9 @@ class Products extends Component {
 							size="sm"
 							style={{ marginLeft: 16 }}
 							onClick={param => {
+								console.log(params.data)
 								let subs = this.state.subCategories.filter(
-									sub => sub._id == params.data.subCategory._id
+									sub => sub.category == params.data.category._id
 								)
 								subs = subs.map(sub => sub.name)
 								this.setState({
@@ -509,7 +494,7 @@ class Products extends Component {
 													</label>
 													<Input
 														className="form-control-alternative"
-														name="brandModelYear"
+														name="productYear"
 														placeholder="2020"
 														defaultValue={
 															this.state.selectedProduct ? this.state.selectedProduct.year : '2020'

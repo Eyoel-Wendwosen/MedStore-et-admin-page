@@ -283,7 +283,7 @@ class SubCategory extends React.Component {
 						</ModalBody>
 						<ModalFooter>
 							<Button color="success" type="submit">
-								{this.state.isAdd ? 'Add Category' : 'Save'}
+								{this.state.isAdd ? 'Add SubCategory' : 'Save'}
 							</Button>
 							{this.state.isAdd ? (
 								''
