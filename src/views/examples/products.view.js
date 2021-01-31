@@ -222,7 +222,6 @@ class Products extends Component {
 							size="sm"
 							style={{ marginLeft: 16 }}
 							onClick={param => {
-								console.log(params.data)
 								let subs = this.state.subCategories.filter(
 									sub => sub.category == params.data.category._id
 								)
