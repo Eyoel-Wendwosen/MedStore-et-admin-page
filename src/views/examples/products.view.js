@@ -11,6 +11,7 @@ import {
 	ModalFooter,
 	ModalHeader,
 	Row,
+	Badge,
 } from 'reactstrap'
 import { DataGrid } from '@material-ui/data-grid'
 import axios from 'axios'
@@ -30,9 +31,11 @@ class Products extends Component {
 			categories: [],
 			subCategories: [],
 			searchQuery: '',
-			newProductImgURL: [],
+			newProductImgURL: '',
 			newProductPhotoFiles: null,
 			selectedCategorySubCategory: [], // used in Modal subCategory input field
+			uploadingStarted: false,
+			doneUploading: true,
 		}
 		this.handelSearchChange = this.handelSearchChange.bind(this)
 		this.toggleModal = this.toggleModal.bind(this)
@@ -44,14 +47,17 @@ class Products extends Component {
 
 	async componentDidMount() {
 		let products = (await axios.get(`${SERVER_URL}${API_URL}/product`)).data.data
+		console.log(products)
 		products.forEach(product => {
 			product['id'] = product['_id']
-			product.categoryName = product.category.name
-			product.subCategoryName = product.subCategory ? product.subCategory.name : '  -  '
+			product.categoryName = product.Category ? product.Category.name : ' - '
+			product.subCategoryName = product.SubCategory ? product.SubCategory.name : '  -  '
 			product.year = /\d{4}/.exec(product.year)[0]
 		})
-		const categories = (await axios.get(`${SERVER_URL}${API_URL}/category?fields=name`)).data.data
+		const categories = (await axios.get(`${SERVER_URL}${API_URL}/category`)).data.data
 		const subCategories = (await axios.get(`${SERVER_URL}${API_URL}/subCategory`)).data.data
+		console.log(categories)
+		console.log(subCategories)
 		this.setState({
 			products,
 			categories,
@@ -69,6 +75,8 @@ class Products extends Component {
 		this.setState({
 			isAdd: true,
 			selectedProduct: null,
+			uploadingStarted: false,
+			doneUploading: false,
 		})
 		this.toggleModal()
 	}
@@ -109,7 +117,7 @@ class Products extends Component {
 						subCategory => subCategory.name == formValues['productSubCategory']
 				  )[0]._id
 				: null,
-			tags: formValues['productTags'] ? formValues['productTags'].split(',') : [],
+			tags: formValues['productTags'] ? formValues['productTags'] : '',
 			condition: formValues['productCondition'],
 			brand: formValues['brandName'],
 			company: formValues['companyName'],
@@ -118,17 +126,18 @@ class Products extends Component {
 			year: formValues['productYear'],
 			description: formValues['productDescription'],
 			characteristics: formValues['productCharacteristics']
-				? formValues['productCharacteristics'].split(';').map(char => char.split(':'))
-				: [],
+				? formValues['productCharacteristics']
+				: '',
 			photo_urls:
 				this.state.newProductImgURL.length !== 0 ? this.state.newProductImgURL : undefined,
 		}
 
 		if (eventType === 'add') {
 			let product = (await axios.post(`${SERVER_URL}${API_URL}/product`, newData)).data.data
+			console.log(product)
 			product['id'] = product['_id']
-			product.categoryName = product.category.name
-			product.subCategoryName = product.subCategory ? product.subCategory.name : '  -  '
+			product.categoryName = product.Category.name
+			product.subCategoryName = product.subCategory ? product.SubCategory.name : '  -  '
 			product.year = /\d{4}/.exec(product.year)[0]
 
 			this.setState(prevState => ({
@@ -142,8 +151,8 @@ class Products extends Component {
 				)
 			).data.data
 			product['id'] = product['_id']
-			product.categoryName = product.category.name
-			product.subCategoryName = product.subCategory ? product.subCategory.name : '  -  '
+			product.categoryName = product.Category.name
+			product.subCategoryName = product.subCategory ? product.SubCategory.name : '  -  '
 			product.year = /\d{4}/.exec(product.year)[0]
 
 			this.setState(prevState => ({
@@ -153,6 +162,7 @@ class Products extends Component {
 	}
 
 	handelPhotoAdd(e) {
+		console.log('handelPhotoAdd')
 		let photos = e.target.files
 		this.setState({
 			// isAdd: true,
@@ -162,16 +172,22 @@ class Products extends Component {
 
 	handelPhotoUpload(e) {
 		e.preventDefault()
-
+		this.setState({
+			uploadingStarted: true,
+			doneUploading: false,
+		})
 		let formData = new FormData()
 		for (const key of Object.keys(this.state.newProductPhotoFiles)) {
 			formData.append('products', this.state.newProductPhotoFiles[key])
 		}
 		// formData.append("type", "productPhoto");
-
-		axios.post(`${SERVER_URL}${API_URL}/uploads`, formData, {}).then(res => {
+		axios.post(`${SERVER_URL}${API_URL}/uploads`, formData).then(res => {
+			// change the array to ; separated string
+			let newProductImgURL = res.data.data.join(';')
 			this.setState({
-				newProductImgURL: res.data.data,
+				newProductImgURL,
+				uploadingStarted: false,
+				doneUploading: true,
 			})
 		})
 	}
@@ -223,13 +239,15 @@ class Products extends Component {
 							style={{ marginLeft: 16 }}
 							onClick={param => {
 								let subs = this.state.subCategories.filter(
-									sub => sub.category == params.data.category._id
+									sub => sub.category == params.data.category
 								)
 								subs = subs.map(sub => sub.name)
 								this.setState({
 									isAdd: false,
 									selectedProduct: params.data,
 									selectedCategorySubCategory: subs,
+									uploadingStarted: false,
+									doneUploading: false,
 								})
 								this.toggleModal()
 							}}>
@@ -563,6 +581,12 @@ class Products extends Component {
 												onClick={e => this.handelPhotoUpload(e)}>
 												Upload
 											</Button>
+											{this.state.uploadingStarted && !this.state.doneUploading && (
+												<Badge color="danger">Uploading ... Please wait</Badge>
+											)}
+											{!this.state.uploadingStarted && this.state.doneUploading && (
+												<Badge color="primary">Done Uploading</Badge>
+											)}
 										</FormGroup>
 									</div>
 									{/* </CardBody>

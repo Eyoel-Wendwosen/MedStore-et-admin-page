@@ -1,5 +1,6 @@
 module.exports = {
-	LOCAL_BASE_URL: `https://powerful-plains-02159.herokuapp.com`,
-	SERVER_URL: 'https://powerful-plains-02159.herokuapp.com',
+	// SERVER_URL: `http://localhost:8080`,
+	SERVER_URL: 'http://medstore.et',
+	// SERVER_URL: 'https://powerful-plains-02159.herokuapp.com',
 	API_URL: '/api/v1',
 }

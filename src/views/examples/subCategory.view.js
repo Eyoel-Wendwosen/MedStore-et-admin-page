@@ -60,9 +60,11 @@ class SubCategory extends React.Component {
 			subCategory['id'] = subCategory['_id']
 			delete subCategory['_id']
 		})
+
 		let categoryPromises = subCategories.map(subCategory => {
-			return axios.get(`${SERVER_URL}${API_URL}/category/${subCategory.category}?fields=name`)
+			return axios.get(`${SERVER_URL}${API_URL}/category/${subCategory.category}`)
 		})
+
 		let category = await Promise.all(categoryPromises)
 		category = category.map(c => c.data.data.name)
 		let count = 0
@@ -70,10 +72,11 @@ class SubCategory extends React.Component {
 			subCategory.category = category[count]
 			count++
 		})
+
 		this.setState({
 			subCategories,
 		})
-		let categories = (await axios.get(`${SERVER_URL}${API_URL}/category?fields=name`)).data.data
+		let categories = (await axios.get(`${SERVER_URL}${API_URL}/category`)).data.data
 		this.setState({
 			categories,
 		})

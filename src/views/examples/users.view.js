@@ -53,18 +53,20 @@ class User extends React.Component {
 		this.handelSubmit = this.handelSubmit.bind(this)
 	}
 
-	componentDidMount() {
-		axios.get(`${SERVER_URL}${API_URL}/api/v1/user`).then(res => {
-			res.data.data.map(user => (user['id'] = user['_id']))
-			this.setState({
-				users: res.data.data,
-			})
+	async componentDidMount() {
+		let users = (await axios.get(`${SERVER_URL}${API_URL}/user`)).data.data
+		users.forEach(user => {
+			user.id = user._id
+			delete user._id
+		})
+		this.setState({
+			users,
 		})
 	}
 
 	handelDelete(e) {
 		e.preventDefault()
-		axios.delete(`${SERVER_URL}${API_URL}/api/v1/user/${this.state.selectedUser._id}`).then(res => {
+		axios.delete(`${SERVER_URL}${API_URL}/user/${this.state.selectedUser._id}`).then(res => {
 			res.data.data['id'] = res.data.data['_id']
 			let users = this.state.users
 			users.splice(users.indexOf(users.find(users => users.id === res.data.data['id'])), 1)
@@ -88,7 +90,7 @@ class User extends React.Component {
 			avatar_url: this.state.newUserImgURL ? this.state.newUserImgURL : '',
 		}
 		if (eventType === 'add') {
-			axios.post(`${SERVER_URL}${API_URL}/api/v1/user`, { user: newData }).then(res => {
+			axios.post(`${SERVER_URL}${API_URL}/user`, { user: newData }).then(res => {
 				res.data.data['id'] = res.data.data['_id']
 				this.setState(prevState => ({
 					users: prevState.users.concat([res.data.data]),
@@ -96,7 +98,7 @@ class User extends React.Component {
 			})
 		} else {
 			axios
-				.put(`${SERVER_URL}${API_URL}/api/v1/user/${this.state.selectedUser._id}`, {
+				.put(`${SERVER_URL}${API_URL}/user/${this.state.selectedUser._id}`, {
 					user: newData,
 				})
 				.then(res => {

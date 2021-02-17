@@ -55,6 +55,7 @@ class Request extends React.Component {
 	async componentDidMount() {
 		let requests = await axios.get(`${SERVER_URL}${API_URL}/request`)
 		requests = requests.data.data
+		console.log(requests)
 		let newRequests = []
 		requests.forEach(request => {
 			let obj = {
@@ -64,8 +65,8 @@ class Request extends React.Component {
 				email: request.user ? request.user.email : request.email,
 				address: request.user ? request.user.city : request.address,
 				user: request.user ? request.user : null,
-				product: request.product,
-				productName: request.product.name,
+				product: request.Product,
+				productName: request.Product.name,
 				quantity: request.quantity,
 				message: request.message,
 				date: request.createdAt.split('T')[0],
