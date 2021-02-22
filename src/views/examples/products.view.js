@@ -35,7 +35,7 @@ class Products extends Component {
 			newProductPhotoFiles: null,
 			selectedCategorySubCategory: [], // used in Modal subCategory input field
 			uploadingStarted: false,
-			doneUploading: true,
+			doneUploading: false,
 		}
 		this.handelSearchChange = this.handelSearchChange.bind(this)
 		this.toggleModal = this.toggleModal.bind(this)
@@ -181,15 +181,23 @@ class Products extends Component {
 			formData.append('products', this.state.newProductPhotoFiles[key])
 		}
 		// formData.append("type", "productPhoto");
-		axios.post(`${SERVER_URL}${API_URL}/uploads`, formData).then(res => {
-			// change the array to ; separated string
-			let newProductImgURL = res.data.data.join(';')
-			this.setState({
-				newProductImgURL,
-				uploadingStarted: false,
-				doneUploading: true,
+		axios
+			.post(`${SERVER_URL}${API_URL}/uploads`, formData)
+			.then(res => {
+				// change the array to ; separated string
+				let newProductImgURL = res.data.data.join(';')
+				this.setState({
+					newProductImgURL,
+					uploadingStarted: false,
+					doneUploading: true,
+				})
 			})
-		})
+			.catch(() => {
+				this.setState({
+					uploadingStarted: true,
+					doneUploading: true,
+				})
+			})
 	}
 
 	modifySelectedCategorySubCategory = e => {
@@ -586,6 +594,9 @@ class Products extends Component {
 											)}
 											{!this.state.uploadingStarted && this.state.doneUploading && (
 												<Badge color="primary">Done Uploading</Badge>
+											)}
+											{this.state.uploadingStarted && this.state.doneUploading && (
+												<Badge color="primary">Uploading failed try again</Badge>
 											)}
 										</FormGroup>
 									</div>

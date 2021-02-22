@@ -54,8 +54,8 @@ class SubCategory extends React.Component {
 	}
 
 	async componentDidMount() {
-		let subCategories = await axios.get(`${SERVER_URL}${API_URL}/subCategory`)
-		subCategories = subCategories.data.data
+		let subCategories = (await axios.get(`${SERVER_URL}${API_URL}/subCategory`)).data.data
+		console.log(subCategories)
 		subCategories.forEach(subCategory => {
 			subCategory['id'] = subCategory['_id']
 			delete subCategory['_id']

@@ -1,20 +1,3 @@
-/*!
-
-=========================================================
-* Argon Dashboard React - v1.1.0
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/argon-dashboard-react
-* Copyright 2019 Creative Tim (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/argon-dashboard-react/blob/master/LICENSE.md)
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-  \
-*/
 import Index from 'views/Index.js'
 import User from 'views/examples/users.view.js'
 import Maps from 'views/examples/Maps.js'
@@ -24,7 +7,9 @@ import Categories from 'views/examples/category.view.js'
 import Prodcuts from 'views/examples/products.view.js'
 import SubCategory from 'views/examples/subCategory.view'
 import Request from 'views/examples/request.view'
+import Message from 'views/examples/message.view'
 import ProcessedRequest from 'views/examples/processedRequest.view'
+import PrecessedMessage from 'views/examples/processedMessage.view'
 
 var routes = [
 	{
@@ -46,6 +31,20 @@ var routes = [
 		name: 'ProcessedRequest',
 		icon: 'ni ni-bullet-list-67 text-red',
 		component: ProcessedRequest,
+		layout: '/admin',
+	},
+	{
+		path: '/message',
+		name: 'Message',
+		icon: 'ni ni-bullet-list-67 text-red',
+		component: Message,
+		layout: '/admin',
+	},
+	{
+		path: '/processedMessage',
+		name: 'ProcessedMessage',
+		icon: 'ni ni-bullet-list-67 text-red',
+		component: PrecessedMessage,
 		layout: '/admin',
 	},
 	{

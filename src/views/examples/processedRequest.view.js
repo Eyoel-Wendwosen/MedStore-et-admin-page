@@ -53,7 +53,7 @@ class Request extends React.Component {
 	}
 
 	async componentDidMount() {
-		let requests = await axios.get(`${SERVER_URL}${API_URL}/request`)
+		let requests = await axios.get(`${SERVER_URL}${API_URL}/request?processed=1`)
 		requests = requests.data.data
 		let newRequests = []
 		requests.forEach(request => {
@@ -74,7 +74,7 @@ class Request extends React.Component {
 			newRequests.push(obj)
 		})
 		this.setState({
-			requests: newRequests.filter(request => request.processed),
+			requests: newRequests,
 		})
 	}
 
